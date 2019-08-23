@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os,sys
+import re
 
 from __args__ import mainVars
 
@@ -41,15 +42,30 @@ def checkFunc(function):
 
 
     def terraformCheckWrapper(system):
-        return 1.1
+      if "Linux" in system:
+        try:
+          terraformVersion = os.popen('terraform --version').read()
+          if re.compile(r"[A-z]\s+v\d+.\d+.\d+").search(terraformVersion) != None:
+            return re.sub(r"[A-z\s+]", "", terraformVersion)
+          else:
+            raise Exception()
+#            print("E! Terraform not found. Please install it before starting an agent.")
+#            sys.exit(1)
+        except:
+          print("E! Terraform not found. Please install it before starting an agent.")
+          sys.exit(1)
+      else:
+        print("E! Unfortunately Inframig agent is not supporting your OS yet.")
+        print("E! We will working on it! Exit.")
+        sys.exit(1)
 
 
     def executorWrapper():
       system = os.uname()
       AWS_KEY, AWS_SECRET = checkCredsWrapper()
       function_id = argumentsWrapper()
-      version = terraformCheckWrapper(system)
-      return getattr(function(system, AWS_KEY, AWS_SECRET, sys.argv[1::]), mainVars['functions_list'][function_id])()
+      terraformVersion = terraformCheckWrapper(system)
+      return getattr(function(system, AWS_KEY, AWS_SECRET, terraformVersion, sys.argv[1::]), mainVars['functions_list'][function_id])()
 
     return executorWrapper()
 
@@ -58,16 +74,18 @@ def checkFunc(function):
 @checkFunc
 class StartUp(object):
  
-  def __init__(self, system, AWS_KEY, AWS_SECRET, command_line):
+  def __init__(self, system, AWS_KEY, AWS_SECRET, terraformVersion, command_line):
     self.AWS_KEY = AWS_KEY
     self.AWS_SECRET = AWS_SECRET
     self.command_line = command_line
+    self.terraformVersion = terraformVersion
 
 
   def printVersion(self):
-    print("Version: %s\nRelease date: %s\nWebsite: inframig.com" %
+    print("Version: %s\nRelease date: %s\nWebsite: inframig.com\nTerraform: %s" %
           (mainVars['inframig_version'],
-          mainVars['inframig_release_date']))
+          mainVars['inframig_release_date'],
+          self.terraformVersion))
     sys.exit(0)
 
 
